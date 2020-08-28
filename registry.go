@@ -30,7 +30,7 @@ type rtr struct {
 }
 
 // NewRouter creates new router and returns it
-func NewRouter(opts ...router.Option) (router.Router, error) {
+func NewRouter(opts ...router.Option) router.Router {
 	// get default options
 	options := router.DefaultOptions()
 
@@ -45,17 +45,13 @@ func NewRouter(opts ...router.Option) (router.Router, error) {
 		initChan: make(chan bool),
 	}
 
-	if options.Registry == nil {
-		return nil, fmt.Errorf("registry not set")
-	}
-
 	// create the new table, passing the fetchRoute method in as a fallback if
 	// the table doesn't contain the result for a query.
 	r.table = newTable(r.lookup)
 
 	// start the router
 	r.start()
-	return r, nil
+	return r
 }
 
 // Init initializes router with given options
@@ -65,6 +61,10 @@ func (r *rtr) Init(opts ...router.Option) error {
 		o(&r.options)
 	}
 	r.Unlock()
+
+	if r.options.Registry == nil {
+		return fmt.Errorf("registry not set")
+	}
 
 	// push a message to the init chan so the watchers
 	// can reset in the case the registry was changed
