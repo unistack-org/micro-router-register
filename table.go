@@ -129,7 +129,7 @@ func (t *table) Create(r router.Route) error {
 	// create the route
 	t.routes[service][sum] = &route{r, time.Now()}
 
-	if logger.V(logger.DebugLevel, logger.DefaultLogger) {
+	if logger.V(logger.DebugLevel) {
 		logger.Debugf("Router emitting %s for route: %s", router.Create, r.Address)
 	}
 
@@ -163,7 +163,7 @@ func (t *table) Delete(r router.Route) error {
 		delete(t.routes, service)
 	}
 
-	if logger.V(logger.DebugLevel, logger.DefaultLogger) {
+	if logger.V(logger.DebugLevel) {
 		logger.Debugf("Router emitting %s for route: %s", router.Delete, r.Address)
 	}
 	go t.sendEvent(&router.Event{Type: router.Delete, Timestamp: time.Now(), Route: r})
@@ -188,7 +188,7 @@ func (t *table) Update(r router.Route) error {
 		// update the route
 		t.routes[service][sum] = &route{r, time.Now()}
 
-		if logger.V(logger.DebugLevel, logger.DefaultLogger) {
+		if logger.V(logger.DebugLevel) {
 			logger.Debugf("Router emitting %s for route: %s", router.Update, r.Address)
 		}
 		go t.sendEvent(&router.Event{Type: router.Update, Timestamp: time.Now(), Route: r})
