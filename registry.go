@@ -32,7 +32,7 @@ type rtr struct {
 // NewRouter creates new router and returns it
 func NewRouter(opts ...router.Option) router.Router {
 	// get default options
-	options := router.DefaultOptions()
+	options := router.NewOptions()
 
 	// apply requested options
 	for _, o := range opts {

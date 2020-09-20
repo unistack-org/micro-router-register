@@ -247,11 +247,17 @@ github.com/unistack-org/micro-codec-bytes v0.0.0-20200827104921-3616a69473a6/go.
 github.com/unistack-org/micro-codec-bytes v0.0.0-20200828083432-4e49e953d844/go.mod h1:g5sOI8TWgGZiVHe8zoUPdtz7+0oLnqTnfBoai6Qb7jE=
 github.com/unistack-org/micro-config-cmd v0.0.0-20200828075439-d859b9d7265b h1:v5Ak+Sr780jZclFDnx82g5biF0N5HRVKphEpJhbnVUs=
 github.com/unistack-org/micro-config-cmd v0.0.0-20200828075439-d859b9d7265b/go.mod h1:6pm1cadbwsFcEW1ZbV5Fp0i3goR3TNfROMNSPih3I8k=
+github.com/unistack-org/micro-config-cmd v0.0.0-20200909210346-ec89783dc46c/go.mod h1:6pm1cadbwsFcEW1ZbV5Fp0i3goR3TNfROMNSPih3I8k=
+github.com/unistack-org/micro-config-cmd v0.0.0-20200909210755-6e7e85eeab34 h1:VHc98t4SoiCF/jbkFu2e/j+IyJ/+MFQ1T+INNL7LubU=
+github.com/unistack-org/micro-config-cmd v0.0.0-20200909210755-6e7e85eeab34/go.mod h1:fT1gYn+TtfVZZ5tNx56bZIncJjmlji66g7GKdWua5hE=
 github.com/unistack-org/micro/v3 v3.0.0-20200827083227-aa99378adc6e/go.mod h1:rPQbnry3nboAnMczj8B1Gzlcyv/HYoMZLgd3/3nttJ4=
 github.com/unistack-org/micro/v3 v3.0.0-20200828085518-2c136b005edd h1:Kiex7qjrmCjkoLAowuUQXbTkAfJEmMjEM6WH0EWG13s=
 github.com/unistack-org/micro/v3 v3.0.0-20200828085518-2c136b005edd/go.mod h1:fMA60jjS3INPT4AwYm2+jTHVuWEkVYvaO/7wgEpylTk=
 github.com/unistack-org/micro/v3 v3.0.0-gamma.0.20200904234316-e7d418183b62 h1:dElbxPX7dJU6p7kmllY1PqvI67fwl3lBBkZk3xDjtL4=
 github.com/unistack-org/micro/v3 v3.0.0-gamma.0.20200904234316-e7d418183b62/go.mod h1:mB0h+i3Sa4jD8G2dv97cAAdyh01hVQWKw4xSdmTpyOo=
+github.com/unistack-org/micro/v3 v3.0.0-gamma.0.20200909210629-caec730248b1/go.mod h1:mmqHR9WelHUXqg2mELjsQ+FJHcWs6mNmXg+wEYO2T3c=
+github.com/unistack-org/micro/v3 v3.0.0-gamma.0.20200920124807-9b11ea527aeb h1:ETCShJ27nTE7kMQgaf7S6p1Tbfr2tdGO6MYxZ2LTMWY=
+github.com/unistack-org/micro/v3 v3.0.0-gamma.0.20200920124807-9b11ea527aeb/go.mod h1:HUzMG4Mcy97958VxWTg8zuazZgwQ/aoLZ8wtBVONwRE=
 github.com/urfave/cli v1.22.1/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=
 github.com/vultr/govultr v0.1.4/go.mod h1:9H008Uxr/C4vFNGLqKx232C206GL0PBHzOP0809bGNA=
 github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f/go.mod h1:N2zxlSyiKSe5eX1tZViRH5QA0qijqEDrYZiPEAiq3wU=
