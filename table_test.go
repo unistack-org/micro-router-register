@@ -303,7 +303,7 @@ func TestQuery(t *testing.T) {
 func TestFallback(t *testing.T) {
 
 	r := &rtr{
-		options: router.DefaultOptions(),
+		options: router.NewOptions(),
 	}
 	route := router.Route{
 		Service: "go.micro.service.foo",
@@ -341,7 +341,7 @@ func TestFallback(t *testing.T) {
 
 func TestFallbackError(t *testing.T) {
 	r := &rtr{
-		options: router.DefaultOptions(),
+		options: router.NewOptions(),
 	}
 	r.table = newTable(func(s string) ([]router.Route, error) {
 		return nil, fmt.Errorf("ERROR")
