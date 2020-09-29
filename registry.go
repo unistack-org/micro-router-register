@@ -2,7 +2,6 @@ package registry
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -151,9 +150,6 @@ func (r *rtr) createRoutes(service *registry.Service, network string) []router.R
 // manageServiceRoutes applies action to all routes of the service.
 // It returns error of the action fails with error.
 func (r *rtr) manageRoutes(service *registry.Service, action, network string) error {
-	// action is the routing table action
-	action = strings.ToLower(action)
-
 	// create a set of routes from the service
 	routes := r.createRoutes(service, network)
 
@@ -168,7 +164,9 @@ func (r *rtr) manageRoutes(service *registry.Service, action, network string) er
 
 	// create the routes in the table
 	for _, route := range routes {
-		logger.Tracef("Creating route %v domain: %v", route, network)
+		if logger.V(logger.TraceLevel) {
+			logger.Tracef("Creating route %v domain: %v", route, network)
+		}
 		if err := r.manageRoute(route, action); err != nil {
 			return err
 		}
@@ -195,7 +193,9 @@ func (r *rtr) loadRoutes(reg registry.Registry) error {
 
 		// if the routes exist save them
 		if len(routes) > 0 {
-			logger.Tracef("Creating routes for service %v domain: %v", service, domain)
+			if logger.V(logger.TraceLevel) {
+				logger.Tracef("Creating routes for service %v domain: %v", service, domain)
+			}
 			for _, rt := range routes {
 				err := r.table.Create(rt)
 
@@ -205,7 +205,9 @@ func (r *rtr) loadRoutes(reg registry.Registry) error {
 				}
 
 				if err != nil {
-					logger.Errorf("Error creating route for service %v in domain %v: %v", service, domain, err)
+					if logger.V(logger.ErrorLevel) {
+						logger.Errorf("Error creating route for service %v in domain %v: %v", service, domain, err)
+					}
 				}
 			}
 			continue
@@ -216,7 +218,9 @@ func (r *rtr) loadRoutes(reg registry.Registry) error {
 		// get the service to retrieve all its info
 		srvs, err := reg.GetService(service.Name, registry.GetDomain(domain))
 		if err != nil {
-			logger.Tracef("Failed to get service %s domain: %s", service.Name, domain)
+			if logger.V(logger.TraceLevel) {
+				logger.Tracef("Failed to get service %s domain: %s", service.Name, domain)
+			}
 			continue
 		}
 
@@ -225,7 +229,9 @@ func (r *rtr) loadRoutes(reg registry.Registry) error {
 			routes := r.createRoutes(srv, domain)
 
 			if len(routes) > 0 {
-				logger.Tracef("Creating routes for service %v domain: %v", srv, domain)
+				if logger.V(logger.TraceLevel) {
+					logger.Tracef("Creating routes for service %v domain: %v", srv, domain)
+				}
 				for _, rt := range routes {
 					err := r.table.Create(rt)
 
@@ -235,7 +241,9 @@ func (r *rtr) loadRoutes(reg registry.Registry) error {
 					}
 
 					if err != nil {
-						logger.Errorf("Error creating route for service %v in domain %v: %v", service, domain, err)
+						if logger.V(logger.ErrorLevel) {
+							logger.Errorf("Error creating route for service %v in domain %v: %v", service, domain, err)
+						}
 					}
 				}
 			}
@@ -247,14 +255,20 @@ func (r *rtr) loadRoutes(reg registry.Registry) error {
 
 // lookup retrieves all the routes for a given service and creates them in the routing table
 func (r *rtr) lookup(service string) ([]router.Route, error) {
-	logger.Tracef("Fetching route for %s domain: %v", service, registry.WildcardDomain)
+	if logger.V(logger.TraceLevel) {
+		logger.Tracef("Fetching route for %s domain: %v", service, registry.WildcardDomain)
+	}
 
 	services, err := r.options.Registry.GetService(service, registry.GetDomain(registry.WildcardDomain))
 	if err == registry.ErrNotFound {
-		logger.Tracef("Failed to find route for %s", service)
+		if logger.V(logger.TraceLevel) {
+			logger.Tracef("Failed to find route for %s", service)
+		}
 		return nil, router.ErrRouteNotFound
 	} else if err != nil {
-		logger.Tracef("Failed to find route for %s: %v", service, err)
+		if logger.V(logger.TraceLevel) {
+			logger.Tracef("Failed to find route for %s: %v", service, err)
+		}
 		return nil, fmt.Errorf("failed getting services: %v", err)
 	}
 
@@ -304,11 +318,15 @@ func (r *rtr) watchRegistry(w registry.Watcher) error {
 
 		// don't process nil entries
 		if res.Service == nil {
-			logger.Trace("Received a nil service")
+			if logger.V(logger.TraceLevel) {
+				logger.Trace("Received a nil service")
+			}
 			continue
 		}
 
-		logger.Tracef("Router dealing with next route %s %+v\n", res.Action, res.Service)
+		if logger.V(logger.TraceLevel) {
+			logger.Tracef("Router dealing with next route %s %+v\n", res.Action, res.Service)
+		}
 
 		// get the services domain from metadata. Fallback to wildcard.
 		domain := getDomain(res.Service)
@@ -383,7 +401,9 @@ func (r *rtr) start() error {
 			case <-r.exit:
 				return
 			default:
-				logger.Tracef("Router starting registry watch")
+				if logger.V(logger.TraceLevel) {
+					logger.Tracef("Router starting registry watch")
+				}
 				w, err := r.options.Registry.Watch(registry.WatchDomain(registry.WildcardDomain))
 				if err != nil {
 					if logger.V(logger.DebugLevel) {
