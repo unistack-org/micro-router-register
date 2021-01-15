@@ -5,17 +5,20 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/micro/go-micro/v3/logger"
-	"github.com/micro/go-micro/v3/router"
+	"github.com/unistack-org/micro/v3/logger"
+	"github.com/unistack-org/micro/v3/router"
 )
 
 // table is an in-memory routing table
 type table struct {
 	sync.RWMutex
+	// lookup for a service
+	lookup func(string) ([]router.Route, error)
 	// routes stores service routes
 	routes map[string]map[uint64]*route
 	// watchers stores table watchers
 	watchers map[string]*tableWatcher
+	opts     router.Options
 }
 
 type route struct {
@@ -24,10 +27,12 @@ type route struct {
 }
 
 // newtable creates a new routing table and returns it
-func newTable() *table {
+func newTable(lookup func(string) ([]router.Route, error), opts ...router.Option) *table {
 	return &table{
+		lookup:   lookup,
 		routes:   make(map[string]map[uint64]*route),
 		watchers: make(map[string]*tableWatcher),
+		opts:     router.NewOptions(opts...),
 	}
 }
 
@@ -126,8 +131,8 @@ func (t *table) Create(r router.Route) error {
 	// create the route
 	t.routes[service][sum] = &route{r, time.Now()}
 
-	if logger.V(logger.DebugLevel, logger.DefaultLogger) {
-		logger.Debugf("Router emitting %s for route: %s", router.Create, r.Address)
+	if t.opts.Logger.V(logger.DebugLevel) {
+		t.opts.Logger.Debugf(t.opts.Context, "Router emitting %s for route: %s", router.Create, r.Address)
 	}
 
 	// send a route created event
@@ -160,8 +165,8 @@ func (t *table) Delete(r router.Route) error {
 		delete(t.routes, service)
 	}
 
-	if logger.V(logger.DebugLevel, logger.DefaultLogger) {
-		logger.Debugf("Router emitting %s for route: %s", router.Delete, r.Address)
+	if t.opts.Logger.V(logger.DebugLevel) {
+		t.opts.Logger.Debugf(t.opts.Context, "Router emitting %s for route: %s", router.Delete, r.Address)
 	}
 	go t.sendEvent(&router.Event{Type: router.Delete, Timestamp: time.Now(), Route: r})
 
@@ -185,8 +190,8 @@ func (t *table) Update(r router.Route) error {
 		// update the route
 		t.routes[service][sum] = &route{r, time.Now()}
 
-		if logger.V(logger.DebugLevel, logger.DefaultLogger) {
-			logger.Debugf("Router emitting %s for route: %s", router.Update, r.Address)
+		if t.opts.Logger.V(logger.DebugLevel) {
+			t.opts.Logger.Debugf(t.opts.Context, "Router emitting %s for route: %s", router.Update, r.Address)
 		}
 		go t.sendEvent(&router.Event{Type: router.Update, Timestamp: time.Now(), Route: r})
 		return nil
@@ -198,38 +203,153 @@ func (t *table) Update(r router.Route) error {
 	return nil
 }
 
-// Read entries from the table
-func (t *table) Read(opts ...router.ReadOption) ([]router.Route, error) {
-	var options router.ReadOptions
-	for _, o := range opts {
-		o(&options)
-	}
-
+// List returns a list of all routes in the table
+func (t *table) List() ([]router.Route, error) {
 	t.RLock()
 	defer t.RUnlock()
 
 	var routes []router.Route
-
-	// get the routes based on options passed
-	if len(options.Service) > 0 {
-		routeMap, ok := t.routes[options.Service]
-		if !ok {
-			return nil, router.ErrRouteNotFound
-		}
-		for _, rt := range routeMap {
-			routes = append(routes, rt.route)
-		}
-		return routes, nil
-	}
-
-	// otherwise get all routes
-	for _, serviceRoutes := range t.routes {
-		for _, rt := range serviceRoutes {
-			routes = append(routes, rt.route)
+	for _, rmap := range t.routes {
+		for _, route := range rmap {
+			routes = append(routes, route.route)
 		}
 	}
 
 	return routes, nil
+}
+
+// isMatch checks if the route matches given query options
+func isMatch(route router.Route, address, gateway, network, rtr, link string) bool {
+	// matches the values provided
+	match := func(a, b string) bool {
+		if a == "*" || b == "*" || a == b {
+			return true
+		}
+		return false
+	}
+
+	// a simple struct to hold our values
+	type compare struct {
+		a string
+		b string
+	}
+
+	// compare the following values
+	values := []compare{
+		{gateway, route.Gateway},
+		{network, route.Network},
+		{rtr, route.Router},
+		{address, route.Address},
+		{link, route.Link},
+	}
+
+	for _, v := range values {
+		// attempt to match each value
+		if !match(v.a, v.b) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// filterRoutes finds all the routes for given network and router and returns them
+func filterRoutes(routes map[uint64]*route, opts router.QueryOptions) []router.Route {
+	address := opts.Address
+	gateway := opts.Gateway
+	network := opts.Network
+	rtr := opts.Router
+	link := opts.Link
+
+	// routeMap stores the routes we're going to advertise
+	routeMap := make(map[string][]router.Route)
+
+	var routeCnt int
+
+	for _, rt := range routes {
+		// get the actual route
+		route := rt.route
+
+		if isMatch(route, address, gateway, network, rtr, link) {
+			// add matchihg route to the routeMap
+			routeKey := route.Service + "@" + route.Network
+			routeMap[routeKey] = append(routeMap[routeKey], route)
+			routeCnt++
+		}
+	}
+
+	results := make([]router.Route, 0, routeCnt)
+	for _, route := range routeMap {
+		results = append(results, route...)
+	}
+
+	return results
+}
+
+// Lookup queries routing table and returns all routes that match the lookup query
+func (t *table) Query(q ...router.QueryOption) ([]router.Route, error) {
+	// create new query options
+	opts := router.NewQuery(q...)
+
+	// create a cwslicelist of query results
+	results := make([]router.Route, 0, len(t.routes))
+
+	// readAndFilter routes for this service under read lock.
+	readAndFilter := func(q router.QueryOptions) ([]router.Route, bool) {
+		t.RLock()
+		defer t.RUnlock()
+
+		routes, ok := t.routes[q.Service]
+		if !ok || len(routes) == 0 {
+			return nil, false
+		}
+
+		return filterRoutes(routes, q), true
+	}
+
+	if opts.Service != "*" {
+		// try and load services from the cache
+		if routes, ok := readAndFilter(opts); ok {
+			return routes, nil
+		}
+
+		// lookup the route and try again
+		// TODO: move this logic out of the hot path
+		// being hammered on queries will require multiple lookups
+		routes, err := t.lookup(opts.Service)
+		if err != nil {
+			return nil, err
+		}
+
+		// cache the routes
+		for _, rt := range routes {
+			t.Create(rt)
+		}
+
+		// try again
+		if routes, ok := readAndFilter(opts); ok {
+			return routes, nil
+		}
+
+		return nil, router.ErrRouteNotFound
+	}
+
+	// search through all destinations
+	t.RLock()
+
+	for _, routes := range t.routes {
+		// filter the routes
+		found := filterRoutes(routes, opts)
+		// ensure we don't append zero length routes
+		if len(found) == 0 {
+			continue
+		}
+		results = append(results, found...)
+	}
+
+	t.RUnlock()
+
+	return results, nil
 }
 
 // Watch returns routing table entry watcher
