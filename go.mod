@@ -1,4 +1,4 @@
-module github.com/unistack-org/micro-router-registry/v3
+module github.com/unistack-org/micro-router-register/v3
 
 go 1.15
 
