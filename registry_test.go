@@ -1,18 +1,18 @@
 // +build ignore
 
-package registry
+package register
 
 import (
 	"os"
 	"testing"
 
-	"github.com/unistack-org/micro/v3/registry/memory"
+	"github.com/unistack-org/micro/v3/register/memory"
 	"github.com/unistack-org/micro/v3/router"
 )
 
 func routerTestSetup() router.Router {
-	r := memory.NewRegistry()
-	return NewRouter(router.Registry(r))
+	r := memory.NewRegister()
+	return NewRouter(router.Register(r))
 }
 
 func TestRouterClose(t *testing.T) {

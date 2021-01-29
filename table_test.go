@@ -1,6 +1,6 @@
 // +build ignore
 
-package registry
+package register
 
 import (
 	"fmt"
