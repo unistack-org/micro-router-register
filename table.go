@@ -4,9 +4,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/unistack-org/micro/v3/logger"
 	"github.com/unistack-org/micro/v3/router"
+	"github.com/unistack-org/micro/v3/util/id"
 )
 
 // table is an in-memory routing table
@@ -96,8 +96,8 @@ func (t *table) sendEvent(e *router.Event) {
 	t.RLock()
 	defer t.RUnlock()
 
-	if len(e.Id) == 0 {
-		e.Id = uuid.New().String()
+	if len(e.ID) == 0 {
+		e.ID, _ = id.New()
 	}
 
 	for _, w := range t.watchers {
@@ -364,11 +364,11 @@ func (t *table) Watch(opts ...router.WatchOption) (router.Watcher, error) {
 	}
 
 	w := &tableWatcher{
-		id:      uuid.New().String(),
 		opts:    wopts,
 		resChan: make(chan *router.Event, 10),
 		done:    make(chan struct{}),
 	}
+	w.id, _ = id.New()
 
 	// when the watcher is stopped delete it
 	go func() {

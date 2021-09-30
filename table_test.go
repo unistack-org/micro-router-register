@@ -307,7 +307,7 @@ func TestFallback(t *testing.T) {
 	}
 	route := router.Route{
 		Service: "go.micro.service.foo",
-		Router:  r.options.Id,
+		Router:  r.options.ID,
 		Link:    router.DefaultLink,
 		Metric:  router.DefaultLocalMetric,
 	}

@@ -20,7 +20,6 @@ var (
 // rtr implements router interface
 type rtr struct {
 	sync.RWMutex
-
 	running  bool
 	table    *table
 	opts     router.Options
@@ -131,7 +130,7 @@ func (r *rtr) createRoutes(service *register.Service, network string) []router.R
 			Address:  node.Address,
 			Gateway:  "",
 			Network:  network,
-			Router:   r.opts.Id,
+			Router:   r.opts.ID,
 			Link:     router.DefaultLink,
 			Metric:   router.DefaultLocalMetric,
 			Metadata: node.Metadata,
@@ -355,7 +354,7 @@ func (r *rtr) start() error {
 			Address: "*",
 			Gateway: r.opts.Gateway,
 			Network: "*",
-			Router:  r.opts.Id,
+			Router:  r.opts.ID,
 			Link:    router.DefaultLink,
 			Metric:  router.DefaultLocalMetric,
 		}
