@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 package register
@@ -6,8 +7,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/unistack-org/micro/v3/register/memory"
-	"github.com/unistack-org/micro/v3/router"
+	"go.unistack.org/micro/v3/register/memory"
+	"go.unistack.org/micro/v3/router"
 )
 
 func routerTestSetup() router.Router {

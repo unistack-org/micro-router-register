@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 package register
@@ -6,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/unistack-org/micro/v3/router"
+	"go.unistack.org/micro/v3/router"
 )
 
 func testSetup(t *testing.T) (*table, router.Route) {
@@ -301,7 +302,6 @@ func TestQuery(t *testing.T) {
 }
 
 func TestFallback(t *testing.T) {
-
 	r := &rtr{
 		options: router.NewOptions(),
 	}
@@ -336,7 +336,6 @@ func TestFallback(t *testing.T) {
 	if len(rts) != 1 {
 		t.Fatalf("incorrect number of routes returned %d", len(rts))
 	}
-
 }
 
 func TestFallbackError(t *testing.T) {
@@ -351,5 +350,4 @@ func TestFallbackError(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error looking up service but none returned")
 	}
-
 }

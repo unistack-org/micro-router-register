@@ -4,9 +4,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/unistack-org/micro/v3/logger"
-	"github.com/unistack-org/micro/v3/router"
-	"github.com/unistack-org/micro/v3/util/id"
+	"go.unistack.org/micro/v3/logger"
+	"go.unistack.org/micro/v3/router"
+	"go.unistack.org/micro/v3/util/id"
 )
 
 // table is an in-memory routing table

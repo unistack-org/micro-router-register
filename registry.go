@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/unistack-org/micro/v3/logger"
-	"github.com/unistack-org/micro/v3/register"
-	"github.com/unistack-org/micro/v3/router"
+	"go.unistack.org/micro/v3/logger"
+	"go.unistack.org/micro/v3/register"
+	"go.unistack.org/micro/v3/router"
 )
 
 var (

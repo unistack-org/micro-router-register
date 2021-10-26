@@ -3,7 +3,7 @@ package register
 import (
 	"sync"
 
-	"github.com/unistack-org/micro/v3/router"
+	"go.unistack.org/micro/v3/router"
 )
 
 // tableWatcher implements routing table Watcher
