@@ -1,4 +1,4 @@
-package register
+package register // import "go.unistack.org/micro-router-register/v3"
 
 import (
 	"fmt"
