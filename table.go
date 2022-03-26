@@ -22,8 +22,8 @@ type table struct {
 }
 
 type route struct {
-	route   router.Route
 	updated time.Time
+	route   router.Route
 }
 
 // newtable creates a new routing table and returns it
@@ -129,7 +129,7 @@ func (t *table) Create(r router.Route) error {
 	}
 
 	// create the route
-	t.routes[service][sum] = &route{r, time.Now()}
+	t.routes[service][sum] = &route{updated: time.Now(), route: r}
 
 	if t.opts.Logger.V(logger.DebugLevel) {
 		t.opts.Logger.Debugf(t.opts.Context, "Router emitting %s for route: %s", router.Create, r.Address)
@@ -188,7 +188,7 @@ func (t *table) Update(r router.Route) error {
 
 	if _, ok := t.routes[service][sum]; !ok {
 		// update the route
-		t.routes[service][sum] = &route{r, time.Now()}
+		t.routes[service][sum] = &route{updated: time.Now(), route: r}
 
 		if t.opts.Logger.V(logger.DebugLevel) {
 			t.opts.Logger.Debugf(t.opts.Context, "Router emitting %s for route: %s", router.Update, r.Address)
@@ -198,7 +198,7 @@ func (t *table) Update(r router.Route) error {
 	}
 
 	// just update the route, but dont emit Update event
-	t.routes[service][sum] = &route{r, time.Now()}
+	t.routes[service][sum] = &route{updated: time.Now(), route: r}
 
 	return nil
 }
