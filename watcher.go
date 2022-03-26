@@ -9,10 +9,10 @@ import (
 // tableWatcher implements routing table Watcher
 type tableWatcher struct {
 	sync.RWMutex
-	id      string
-	opts    router.WatchOptions
 	resChan chan *router.Event
 	done    chan struct{}
+	id      string
+	opts    router.WatchOptions
 }
 
 // Next returns the next noticed action taken on table

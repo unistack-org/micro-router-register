@@ -20,11 +20,11 @@ var (
 // rtr implements router interface
 type rtr struct {
 	sync.RWMutex
-	running  bool
 	table    *table
-	opts     router.Options
 	exit     chan bool
 	initChan chan bool
+	opts     router.Options
+	running  bool
 }
 
 // NewRouter creates new router and returns it
