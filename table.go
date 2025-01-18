@@ -1,6 +1,7 @@
 package register
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -132,7 +133,7 @@ func (t *table) Create(r router.Route) error {
 	t.routes[service][sum] = &route{updated: time.Now(), route: r}
 
 	if t.opts.Logger.V(logger.DebugLevel) {
-		t.opts.Logger.Debugf(t.opts.Context, "Router emitting %s for route: %s", router.Create, r.Address)
+		t.opts.Logger.Debug(t.opts.Context, fmt.Sprintf("Router emitting %s for route: %s", router.Create, r.Address))
 	}
 
 	// send a route created event
@@ -166,7 +167,7 @@ func (t *table) Delete(r router.Route) error {
 	}
 
 	if t.opts.Logger.V(logger.DebugLevel) {
-		t.opts.Logger.Debugf(t.opts.Context, "Router emitting %s for route: %s", router.Delete, r.Address)
+		t.opts.Logger.Debug(t.opts.Context, fmt.Sprintf("Router emitting %s for route: %s", router.Delete, r.Address))
 	}
 	go t.sendEvent(&router.Event{Type: router.Delete, Timestamp: time.Now(), Route: r})
 
@@ -191,7 +192,7 @@ func (t *table) Update(r router.Route) error {
 		t.routes[service][sum] = &route{updated: time.Now(), route: r}
 
 		if t.opts.Logger.V(logger.DebugLevel) {
-			t.opts.Logger.Debugf(t.opts.Context, "Router emitting %s for route: %s", router.Update, r.Address)
+			t.opts.Logger.Debug(t.opts.Context, fmt.Sprintf("Router emitting %s for route: %s", router.Update, r.Address))
 		}
 		go t.sendEvent(&router.Event{Type: router.Update, Timestamp: time.Now(), Route: r})
 		return nil

@@ -84,32 +84,18 @@ func (r *rtr) Table() router.Table {
 	return r.table
 }
 
-func getDomain(srv *register.Service) string {
-	// check the service metadata for domain
-	// TODO: domain as Domain field in register?
-	if srv.Metadata != nil && len(srv.Metadata["domain"]) > 0 {
-		return srv.Metadata["domain"]
-	} else if len(srv.Nodes) > 0 && srv.Nodes[0].Metadata != nil {
-		return srv.Nodes[0].Metadata["domain"]
-	}
-
-	// otherwise return wildcard
-	// TODO: return GlobalDomain or PublicDomain
-	return register.DefaultDomain
-}
-
 // manageRoute applies action on a given route
-func (r *rtr) manageRoute(route router.Route, action string) error {
+func (r *rtr) manageRoute(route router.Route, action register.EventType) error {
 	switch action {
-	case "create":
+	case register.EventCreate:
 		if err := r.table.Create(route); err != nil && err != router.ErrDuplicateRoute {
 			return fmt.Errorf("failed adding route for service %s: %s", route.Service, err)
 		}
-	case "delete":
+	case register.EventDelete:
 		if err := r.table.Delete(route); err != nil && err != router.ErrRouteNotFound {
 			return fmt.Errorf("failed deleting route for service %s: %s", route.Service, err)
 		}
-	case "update":
+	case register.EventUpdate:
 		if err := r.table.Update(route); err != nil {
 			return fmt.Errorf("failed updating route for service %s: %s", route.Service, err)
 		}
@@ -121,7 +107,7 @@ func (r *rtr) manageRoute(route router.Route, action string) error {
 }
 
 // createRoutes turns a service into a list routes basically converting nodes to routes
-func (r *rtr) createRoutes(service *register.Service, network string) []router.Route {
+func (r *rtr) createRoutes(service *register.Service) []router.Route {
 	routes := make([]router.Route, 0, len(service.Nodes))
 
 	for _, node := range service.Nodes {
@@ -129,7 +115,7 @@ func (r *rtr) createRoutes(service *register.Service, network string) []router.R
 			Service:  service.Name,
 			Address:  node.Address,
 			Gateway:  "",
-			Network:  network,
+			Network:  service.Namespace,
 			Router:   r.opts.ID,
 			Link:     router.DefaultLink,
 			Metric:   router.DefaultLocalMetric,
@@ -142,23 +128,23 @@ func (r *rtr) createRoutes(service *register.Service, network string) []router.R
 
 // manageServiceRoutes applies action to all routes of the service.
 // It returns error of the action fails with error.
-func (r *rtr) manageRoutes(service *register.Service, action, network string) error {
+func (r *rtr) manageRoutes(service *register.Service, action register.EventType) error {
 	// create a set of routes from the service
-	routes := r.createRoutes(service, network)
+	routes := r.createRoutes(service)
 
 	// if its a delete action and there's no nodes
 	// it means we need to wipe out all the routes
 	// for that service
-	if action == "delete" && len(routes) == 0 {
+	if action == register.EventDelete && len(routes) == 0 {
 		// delete the service entirely
-		r.table.deleteService(service.Name, network)
+		r.table.deleteService(service.Name, service.Namespace)
 		return nil
 	}
 
 	// create the routes in the table
 	for _, route := range routes {
 		if r.opts.Logger.V(logger.TraceLevel) {
-			r.opts.Logger.Tracef(r.opts.Context, "Creating route %v domain: %v", route, network)
+			r.opts.Logger.Trace(r.opts.Context, "Creating route %v namespace: %v", route, service.Namespace)
 		}
 		if err := r.manageRoute(route, action); err != nil {
 			return err
@@ -171,23 +157,21 @@ func (r *rtr) manageRoutes(service *register.Service, action, network string) er
 // manageRegisterRoutes applies action to all routes of each service found in the register.
 // It returns error if either the services failed to be listed or the routing table action fails.
 func (r *rtr) loadRoutes(reg register.Register) error {
-	services, err := reg.ListServices(r.opts.Context, register.ListDomain(register.WildcardDomain))
+	services, err := reg.ListServices(r.opts.Context, register.ListNamespace(register.WildcardNamespace))
 	if err != nil {
 		return fmt.Errorf("failed listing services: %v", err)
 	}
 
 	// add each service node as a separate route
 	for _, service := range services {
-		// get the services domain from metadata. Fallback to wildcard.
-		domain := getDomain(service)
 
 		// create the routes
-		routes := r.createRoutes(service, domain)
+		routes := r.createRoutes(service)
 
 		// if the routes exist save them
 		if len(routes) > 0 {
 			if r.opts.Logger.V(logger.TraceLevel) {
-				r.opts.Logger.Tracef(r.opts.Context, "Creating routes for service %v domain: %v", service, domain)
+				r.opts.Logger.Trace(r.opts.Context, fmt.Sprintf("Creating routes for service %v", service))
 			}
 			for _, rt := range routes {
 				err := r.table.Create(rt)
@@ -199,7 +183,7 @@ func (r *rtr) loadRoutes(reg register.Register) error {
 
 				if err != nil {
 					if r.opts.Logger.V(logger.ErrorLevel) {
-						r.opts.Logger.Errorf(r.opts.Context, "Error creating route for service %v in domain %v: %v", service, domain, err)
+						r.opts.Logger.Error(r.opts.Context, fmt.Sprintf("Error creating route for service %v: %v", service, err))
 					}
 				}
 			}
@@ -209,21 +193,21 @@ func (r *rtr) loadRoutes(reg register.Register) error {
 		// otherwise get all the service info
 
 		// get the service to retrieve all its info
-		srvs, err := reg.LookupService(r.opts.Context, service.Name, register.LookupDomain(domain))
+		srvs, err := reg.LookupService(r.opts.Context, service.Name, register.LookupNamespace(service.Namespace))
 		if err != nil {
 			if r.opts.Logger.V(logger.TraceLevel) {
-				r.opts.Logger.Tracef(r.opts.Context, "Failed to get service %s domain: %s", service.Name, domain)
+				r.opts.Logger.Trace(r.opts.Context, fmt.Sprintf("Failed to get service %s", service.Name))
 			}
 			continue
 		}
 
 		// manage the routes for all returned services
 		for _, srv := range srvs {
-			routes := r.createRoutes(srv, domain)
+			routes := r.createRoutes(srv)
 
 			if len(routes) > 0 {
 				if r.opts.Logger.V(logger.TraceLevel) {
-					r.opts.Logger.Tracef(r.opts.Context, "Creating routes for service %v domain: %v", srv, domain)
+					r.opts.Logger.Trace(r.opts.Context, fmt.Sprintf("Creating routes for service %v", srv))
 				}
 				for _, rt := range routes {
 					err := r.table.Create(rt)
@@ -235,7 +219,7 @@ func (r *rtr) loadRoutes(reg register.Register) error {
 
 					if err != nil {
 						if r.opts.Logger.V(logger.ErrorLevel) {
-							r.opts.Logger.Errorf(r.opts.Context, "Error creating route for service %v in domain %v: %v", service, domain, err)
+							r.opts.Logger.Error(r.opts.Context, fmt.Sprintf("Error creating route for service %v: %v", service, err))
 						}
 					}
 				}
@@ -249,18 +233,18 @@ func (r *rtr) loadRoutes(reg register.Register) error {
 // lookup retrieves all the routes for a given service and creates them in the routing table
 func (r *rtr) lookup(service string) ([]router.Route, error) {
 	if r.opts.Logger.V(logger.TraceLevel) {
-		r.opts.Logger.Tracef(r.opts.Context, "Fetching route for %s domain: %v", service, register.WildcardDomain)
+		r.opts.Logger.Trace(r.opts.Context, fmt.Sprintf("Fetching route for %s domain: %v", service, register.WildcardNamespace))
 	}
 
-	services, err := r.opts.Register.LookupService(r.opts.Context, service, register.LookupDomain(register.WildcardDomain))
+	services, err := r.opts.Register.LookupService(r.opts.Context, service, register.LookupNamespace(register.WildcardNamespace))
 	if err == register.ErrNotFound {
 		if r.opts.Logger.V(logger.TraceLevel) {
-			r.opts.Logger.Tracef(r.opts.Context, "Failed to find route for %s", service)
+			r.opts.Logger.Trace(r.opts.Context, fmt.Sprintf("Failed to find route for %s", service))
 		}
 		return nil, router.ErrRouteNotFound
 	} else if err != nil {
 		if r.opts.Logger.V(logger.TraceLevel) {
-			r.opts.Logger.Tracef(r.opts.Context, "Failed to find route for %s: %v", service, err)
+			r.opts.Logger.Trace(r.opts.Context, fmt.Sprintf("Failed to find route for %s: %v", service, err))
 		}
 		return nil, fmt.Errorf("failed getting services: %v", err)
 	}
@@ -268,10 +252,9 @@ func (r *rtr) lookup(service string) ([]router.Route, error) {
 	var routes []router.Route
 
 	for _, srv := range services {
-		domain := getDomain(srv)
 		// TODO: should we continue to send the event indicating we created a route?
 		// lookup is only called in the query path so probably not
-		routes = append(routes, r.createRoutes(srv, domain)...)
+		routes = append(routes, r.createRoutes(srv)...)
 	}
 
 	return routes, nil
@@ -311,21 +294,19 @@ func (r *rtr) watchRegister(w register.Watcher) error {
 
 		// don't process nil entries
 		if res.Service == nil {
-			if logger.V(logger.TraceLevel) {
-				logger.Trace(r.opts.Context, "Received a nil service")
+			if r.opts.Logger.V(logger.TraceLevel) {
+				r.opts.Logger.Trace(r.opts.Context, "Received a nil service")
 			}
 			continue
 		}
 
 		if r.opts.Logger.V(logger.TraceLevel) {
-			r.opts.Logger.Tracef(r.opts.Context, "Router dealing with next route %s %+v\n", res.Action, res.Service)
+			r.opts.Logger.Trace(r.opts.Context, fmt.Sprintf("Router dealing with next route %s %+v\n", res.Action, res.Service))
 		}
 
 		// get the services domain from metadata. Fallback to wildcard.
-		domain := getDomain(res.Service)
-
 		// create/update or delete the route
-		if err := r.manageRoutes(res.Service, res.Action, domain); err != nil {
+		if err := r.manageRoutes(res.Service, res.Action); err != nil {
 			return err
 		}
 	}
@@ -383,7 +364,7 @@ func (r *rtr) start() error {
 			case <-t1.C:
 				if err := r.loadRoutes(r.opts.Register); err != nil {
 					if r.opts.Logger.V(logger.DebugLevel) {
-						r.opts.Logger.Debugf(r.opts.Context, "failed refreshing register routes: %s", err)
+						r.opts.Logger.Debug(r.opts.Context, fmt.Sprintf("failed refreshing register routes: %s", err))
 					}
 				}
 			}
@@ -397,12 +378,12 @@ func (r *rtr) start() error {
 				return
 			default:
 				if r.opts.Logger.V(logger.TraceLevel) {
-					r.opts.Logger.Tracef(r.opts.Context, "Router starting register watch")
+					r.opts.Logger.Trace(r.opts.Context, "Router starting register watch")
 				}
-				w, err := r.opts.Register.Watch(r.opts.Context, register.WatchDomain(register.WildcardDomain))
+				w, err := r.opts.Register.Watch(r.opts.Context, register.WatchNamespace(register.WildcardNamespace))
 				if err != nil {
 					if r.opts.Logger.V(logger.DebugLevel) {
-						r.opts.Logger.Debug(r.opts.Context, "failed creating register watcher: %v", err)
+						r.opts.Logger.Debug(r.opts.Context, fmt.Sprintf("failed creating register watcher: %v", err))
 					}
 					time.Sleep(time.Second)
 					continue
@@ -411,7 +392,7 @@ func (r *rtr) start() error {
 				// watchRegister calls stop when it's done
 				if err := r.watchRegister(w); err != nil {
 					if r.opts.Logger.V(logger.DebugLevel) {
-						r.opts.Logger.Debugf(r.opts.Context, "Error watching the register: %v", err)
+						r.opts.Logger.Debug(r.opts.Context, fmt.Sprintf("Error watching the register: %v", err))
 					}
 					time.Sleep(time.Second)
 				}
