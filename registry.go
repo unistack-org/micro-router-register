@@ -291,6 +291,9 @@ func (r *rtr) watchRegister(w register.Watcher) error {
 			}
 			break
 		}
+		if res == nil {
+			continue
+		}
 
 		// don't process nil entries
 		if res.Service == nil {
@@ -301,7 +304,7 @@ func (r *rtr) watchRegister(w register.Watcher) error {
 		}
 
 		if r.opts.Logger.V(logger.TraceLevel) {
-			r.opts.Logger.Trace(r.opts.Context, fmt.Sprintf("Router dealing with next route %s %+v\n", res.Action, res.Service))
+			r.opts.Logger.Trace(r.opts.Context, fmt.Sprintf("Router dealing with next route %s %+v", res.Action, res.Service))
 		}
 
 		// get the services domain from metadata. Fallback to wildcard.
