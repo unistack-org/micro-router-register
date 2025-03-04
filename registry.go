@@ -1,13 +1,13 @@
-package register // import "go.unistack.org/micro-router-register/v3"
+package register
 
 import (
 	"fmt"
 	"sync"
 	"time"
 
-	"go.unistack.org/micro/v3/logger"
-	"go.unistack.org/micro/v3/register"
-	"go.unistack.org/micro/v3/router"
+	"go.unistack.org/micro/v4/logger"
+	"go.unistack.org/micro/v4/register"
+	"go.unistack.org/micro/v4/router"
 )
 
 var (
